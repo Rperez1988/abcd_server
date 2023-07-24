@@ -121,14 +121,24 @@ DATABASES = {
     #     'NAME': BASE_DIR / 'db.sqlite3',
     # }
 
-    'default':{
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'Stocks',
-        'USER': 'postgres',
-        'PASSWORD': 'Nar8uto!',
+     'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'abcd_db',
+        'USER': 'rperezkc',  # Use the existing username here.
+        'PASSWORD': 'Nar8uto!',  # Use the password you set for the user 'rperezkc'.
         'HOST': 'localhost',
-        'PORT': '',
+        'PORT': '3306',
+    
     }
+
+    # 'default':{
+    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
+    #     'NAME': 'Stocks',
+    #     'USER': 'postgres',
+    #     'PASSWORD': 'Nar8uto!',
+    #     'HOST': 'localhost',
+    #     'PORT': '',
+    # }
 }
 
 

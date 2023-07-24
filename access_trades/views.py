@@ -11,38 +11,101 @@ import statistics
 @csrf_exempt
 def get_selected_trades(request):
 
-    TradesInChartView.objects.all().delete()
+    print('hello')
+    # TradesInChartView.objects.all().delete()
 
-    bc  = getBodyContext(request, 'bc')
-    cd = getBodyContext(request, 'cd')
+    # bc  = getBodyContext(request, 'bc')
+    # cd = getBodyContext(request, 'cd')
 
-    numbers = bc.split('-')
+    # numbers = bc.split('-')
 
-    number1 = float(numbers[0].strip())
-    number2 = float(numbers[1].strip())
+    # number1 = float(numbers[0].strip())
+    # number2 = float(numbers[1].strip())
 
-    filtered_trades = all_trades.objects.filter(retracement__bcRetracement__gte=number1, retracement__bcRetracement__lt=number2)
-    # filtered_trades = all_trades.objects.all()
+    # filtered_trades = all_trades.objects.filter(retracement__bcRetracement__gte=number1, retracement__bcRetracement__lt=number2)
+    # # filtered_trades = all_trades.objects.all()
 
-    print(bc,len(filtered_trades))
-
-    for each in filtered_trades:
+    # for each in filtered_trades:
             
-        TradesInChartView.objects.get_or_create(
+    #     TradesInChartView.objects.get_or_create(
 
-            tradeInfo = each.tradeInfo,
-            pivotInfo = each.pivotInfo,
-            movement = each.movement,
-            settings = each.settings,
-            pnl = each.pnl,
-            retracement =  each.retracement,
-            enterExitInfo = each.enterExitInfo,
-            duration = each.duration,
-            chartData = each.chartData,
+    #         tradeInfo = each.tradeInfo,
+    #         pivotInfo = each.pivotInfo,
+    #         movement = each.movement,
+    #         settings = each.settings,
+    #         pnl = each.pnl,
+    #         retracement =  each.retracement,
+    #         enterExitInfo = each.enterExitInfo,
+    #         duration = each.duration,
+    #         chartData = each.chartData,
             
-        )
+    #     )
 
     return HttpResponse("DELETE HISTORY")
+@csrf_exempt
+
+
+def get_trades_of_selected_symbol(request):
+
+    
+    symbol  = getBodyContext(request, 'symbol')
+
+    if symbol != 'All Symbols':
+
+        trades_of_selected_symbol =  all_trades.objects.filter(tradeInfo__symbol=symbol)
+
+        TradesInChartView.objects.all().delete()
+
+        for each in trades_of_selected_symbol:
+
+            TradesInChartView.objects.get_or_create(
+
+                tradeInfo = each.tradeInfo,
+                pivotInfo = each.pivotInfo,
+                movement = each.movement,
+                settings = each.settings,
+                pnl = each.pnl,
+                retracement =  each.retracement,
+                enterExitInfo = each.enterExitInfo,
+                duration = each.duration,
+                chartData = each.chartData,
+                
+            )
+        
+
+    elif symbol == 'All Symbols':
+
+        trades_of_selected_symbol = all_trades.objects.all()
+
+        TradesInChartView.objects.all().delete()
+
+        for each in trades_of_selected_symbol:
+
+            TradesInChartView.objects.get_or_create(
+
+                tradeInfo = each.tradeInfo,
+                pivotInfo = each.pivotInfo,
+                movement = each.movement,
+                settings = each.settings,
+                pnl = each.pnl,
+                retracement =  each.retracement,
+                enterExitInfo = each.enterExitInfo,
+                duration = each.duration,
+                chartData = each.chartData,
+                
+            )
+    
+
+  
+
+    
+    return HttpResponse("get_trades_of_selected_symbol")
+
+
+
+
+
+
 
 def get_peformances_bc(seperated_trades):
    
@@ -541,6 +604,8 @@ def getBodyContext(request, str):
     d = ast.literal_eval(body_unicode)
 
     return (d[str])
+
+
 
 class ViewTradesInChartViewSerializer(generics.ListCreateAPIView):
     queryset            = TradesInChartView.objects.all()

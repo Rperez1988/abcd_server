@@ -7,12 +7,10 @@ sys.path.append('../')
 from runScript.prepare_data.prepareData import prepareData
 from abcd_script.trading_bot.cerebro.run_cerebro import runCerebro
 
-
-
 def runTradingBot(request, sym):
 
     symbol, settingsName, market, pivotLength, rrr, sAndR, maxAtoBLength, maxBtoCLength, maxCtoDLength, entryRSI, abnormalPriceJump, pivotSteepness, aBelowB, startDate, endDate = getUserInput(request)
-
+  
     df, stockNames = prepareData(sym, startDate, endDate)
 
     if df is None:
@@ -53,7 +51,6 @@ def runTradingBot(request, sym):
                 createTrade(each)
 
             deleteTempfiles()
-
 
 def doesDFHaveEnoughData(name, df):
 
@@ -115,7 +112,6 @@ def getUserInput(request):
         startDate,
         endDate)
 
-
 def runOnLoop(request, allStockNames, counter):
 
     for each in range(counter, counter+60):
@@ -128,4 +124,3 @@ def runOnLoop(request, allStockNames, counter):
             return True
 
     return False
-
