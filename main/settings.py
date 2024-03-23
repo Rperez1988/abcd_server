@@ -43,9 +43,16 @@ INSTALLED_APPS = [
     'strategy_settings',
     'trade',
     'rest_framework',
+    # 'patterns',
     'corsheaders',
     'total_statistics',
-    'access_trades'
+    'access_trades',
+    'CandleData',
+    'Trades',
+    'Strategies',
+    'all_patterns',
+    'all_patterns_info'
+    
 ]
 
 REST_FRAMEWORK = {
@@ -123,11 +130,11 @@ DATABASES = {
 
      'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'abcd_db',
+        'NAME': 'mydatabase',
         'USER': 'rperezkc',  # Use the existing username here.
         'PASSWORD': 'Nar8uto!',  # Use the password you set for the user 'rperezkc'.
         'HOST': 'localhost',
-        'PORT': '3306',
+        'PORT': '',
     
     }
 

@@ -7,7 +7,7 @@ def organizeEditAndSortDF(stock,df):
     df = df.rename(columns={"c": "Close", "h": "High", "l": "Low", "o": "Open", "v": "Volume", "t": "Date"})
 
     # Convert unix time into date format.
-    df['Date'] = pd.to_datetime(df['Date'], unit='s')
+    # df['Date'] = pd.to_datetime(df['Date'], unit='s')
 
     dates = []
     for each in df['Date']:

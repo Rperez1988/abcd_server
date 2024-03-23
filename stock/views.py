@@ -362,7 +362,9 @@ def getLiveData(request):
         unixEndDate = time.mktime(datetime.strptime(date_time_str, '%d/%m/%y').timetuple())
 
         # Access finnhub
-        finnhub_client = finnhub.Client(api_key="cc5aa82ad3i2vhf81cfg")
+        # finnhub_client = finnhub.Client(api_key="cc5aa82ad3i2vhf81cfg")
+        
+        finnhub_client = finnhub.Client(api_key="clkbp89r01qso7g5jmbgclkbp89r01qso7g5jmc0")
 
         # Get stock candles data
         res = finnhub_client.stock_candles(stock, 'D', int(unixStartDate), int(unixEndDate))

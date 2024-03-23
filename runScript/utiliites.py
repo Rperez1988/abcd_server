@@ -11,6 +11,23 @@ def runTradingBot(request, sym):
 
     symbol, settingsName, market, pivotLength, rrr, sAndR, maxAtoBLength, maxBtoCLength, maxCtoDLength, entryRSI, abnormalPriceJump, pivotSteepness, aBelowB, startDate, endDate = getUserInput(request)
   
+    settings: dict = {
+
+        'settingsName': settingsName,
+        'market': market,
+        'pivotLength': pivotLength,
+        'rrr': rrr,
+        's&r': sAndR,
+        'maxAtoBLength': maxAtoBLength,
+        'maxBtoCLength': maxBtoCLength,
+        'maxCtoDLength': maxCtoDLength,
+        'entryRSI': entryRSI,
+        'abnormalPriceJump': abnormalPriceJump,
+        'pivotSteepness': pivotSteepness,
+        'aBelowB': aBelowB,
+        'inRestrictionArea': 'inRestrictionArea',
+    }
+            
     df, stockNames = prepareData(sym, startDate, endDate)
 
     if df is None:
@@ -25,32 +42,16 @@ def runTradingBot(request, sym):
 
             for each in stockNames:
 
-                df = convertDFtoCSV(df)
+                # df = convertDFtoCSV(df)
 
-                settings: dict = {
-
-                        'settingsName': settingsName,
-                        'market': market,
-                        'pivotLength': pivotLength,
-                        'rrr': rrr,
-                        's&r': sAndR,
-                        'maxAtoBLength': maxAtoBLength,
-                        'maxBtoCLength': maxBtoCLength,
-                        'maxCtoDLength': maxCtoDLength,
-                        'entryRSI': entryRSI,
-                        'abnormalPriceJump': abnormalPriceJump,
-                        'pivotSteepness': pivotSteepness,
-                        'aBelowB': aBelowB,
-                        'inRestrictionArea': 'inRestrictionArea',
-                    }
-                
+                df.to_csv('second.csv', index=False)
         
                 totalStatistics, allTrades = runCerebro(df, sym,'C:/Users/rpere/Desktop/abcd/abcd_local/abcd_server/second.csv', settings)
         
             for each in allTrades:
                 createTrade(each)
 
-            deleteTempfiles()
+            # deleteTempfiles()
 
 def doesDFHaveEnoughData(name, df):
 
@@ -62,18 +63,38 @@ def doesDFHaveEnoughData(name, df):
 
         return True
 
-def convertDFtoCSV(df):
+# def convertDFtoCSV(df):
 
-    deleteTempfiles()
-    csv = df.to_csv(index=False)
-    df["Date"] = pd.to_datetime(df["Date"], format='%Y-%m-%d')
-    df['Date'].dt.strftime('%Y-%m-%d')
-    with open('first.csv', 'x') as f:
-        f.write(csv)
-    df = pd.read_csv('C:/Users/rpere/Desktop/abcd/abcd_local/abcd_server/first.csv')
+#     deleteTempfiles()
+
+    # df["Date"] = pd.to_datetime(df["Date"], format='%Y-%m-%d')
+
+    # df['Date'].dt.strftime('%Y-%m-%d')
+
+    # csv = df.to_csv(index=False)
+
+    # with open('first.csv', 'x') as f:
+    #     f.write(csv)
+    
+    # df = pd.read_csv('C:/Users/rpere/Desktop/abcd/abcd_local/abcd_server/first.csv', index=False)
+
+    # df.to_csv('second.csv', index=False)
+
+    # Save the DataFrame 'df' directly to 'first.csv'
+    # csv = df.to_csv('first.csv', index=False)
+
+    # with open('first.csv', 'x') as f:
+    #     f.write(csv)
+
+
+    # return df
+
+     # Save the DataFrame 'df' directly to 'first.csv'
     df.to_csv('second.csv', index=False)
 
-    return df
+    # df = pd.read_csv('C:/Users/rpere/Desktop/abcd/abcd_local/abcd_server/second.csv')
+
+    # return df
 
 def getUserInput(request):
 
@@ -112,15 +133,3 @@ def getUserInput(request):
         startDate,
         endDate)
 
-def runOnLoop(request, allStockNames, counter):
-
-    for each in range(counter, counter+60):
-    
-        # try: 
-        runTradingBot(request, allStockNames[each])
-        #     pass
-        if allStockNames[each] == 'BDSI':
-            
-            return True
-
-    return False

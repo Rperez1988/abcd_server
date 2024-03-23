@@ -196,3 +196,7 @@ def setLastItemToTrue(request):
 class strategySettingsModels(generics.ListCreateAPIView):
     queryset            = strategySettings.objects.all()
     serializer_class    = StrategySettingsSerializer
+
+    def post(self, request, *args, **kwargs):
+        # Access the request object
+        print(request.data)  # This will print the POST data

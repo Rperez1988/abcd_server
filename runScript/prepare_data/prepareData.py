@@ -20,6 +20,7 @@ def prepareData(symbol, entered_start_date, entered_end_date):
     unixStartDate = time.mktime(formatted_start_date_date.timetuple())
     unixEndDate = time.mktime(datetime.strptime(string_formatted_end_date, '%d/%m/%y').timetuple())
 
+    print(symbol, unixEndDate, unixEndDate)
     stockDataDF = getFinnHubStockDate(symbol, unixStartDate, unixEndDate)
 
     if stockDataDF is None:

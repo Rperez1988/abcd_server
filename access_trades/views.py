@@ -2,53 +2,120 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from trade.models import all_trades
-from access_trades.models import TradesInChartView, peformance
-from .serializers import TradesInChartViewSerializer, PeformanceSerializer
+from access_trades.models import TradesInChartView, peformance, cd_pef, cd_Peformance, by_symbols
+from .serializers import BySymbolsSerialilzer, TradesInChartViewSerializer, PeformanceSerializer, CDPeformanceSerializer, CDPeformance
 from rest_framework import generics
 import statistics
+from . import utilities
+
+# CREATE A BY-SYMBOL OBJECT FOR EACH SYMBOL
+def create_by_symbol_object(request):
+
+    by_symbols.objects.all().delete()
+    # # Gather all trades of selected symbols
+    symbol_list = ['ALT', 'AAWW']
+    # all_trades = all_trades.objects.filter(symbol=symbol_list)
+    all_trades_ = all_trades.objects.all()
+    print('trades length: ', len(all_trades_))
+    symbol_dict = {}
+
+    # # Create symbol-dict
+    for trade in all_trades_:
+        symbol = trade.tradeInfo['symbol']
+        if symbol not in symbol_dict:
+            symbol_dict[symbol] = []
+        symbol_dict[symbol].append(trade)
+
+    # # Populate symbol-dict
+    symbol_objects = []
+    for key, value in symbol_dict.items():
+
+        symbol = key
+        amount = len(value)
+        winpct = 0
+        wins = 0
+        lost = 0
+        live = 0
+    
+        for each in value:
+            print(key, each.tradeInfo['tradeResult'])
+            
+            if each.tradeInfo['tradeResult'] == 'Win':
+                wins+=1
+            if each.tradeInfo['tradeResult'] == 'Loss':
+                lost+=1
+            if each.tradeInfo['tradeResult'] == 'Live':
+                live+=1
+
+        if(wins > 0):
+            winpct = ((wins/(wins+lost)) * 100)
+
+        x = {
+            'symbol': key,
+            'amount': amount,
+            'winpct': '%.2f'%winpct,
+            'won': wins,
+            'lost': lost,
+            'live': live
+    
+        }
+        symbol_objects.append(x)
+      
+    # Create symbol-object
+    for symbol_object in symbol_objects:
+
+        # Create by-sybmol object for each symbol
+        by_symbols.objects.get_or_create(
+
+            symbol = symbol_object['symbol'],
+            amount = symbol_object['amount'],
+            winpct = symbol_object['winpct'],
+            won = symbol_object['won'],
+            lost = symbol_object['lost'],
+            live = symbol_object['live'],
+                    
+                    
+        )
 
 
+
+    return HttpResponse('by_symbols')
+
+# CREATE A SINGLE-PEFORMANCE OBJECT FOR ALL TRADES OF ALL SYMBOLS
 @csrf_exempt
-def get_selected_trades(request):
+def create_trades_for_single_trade_table(request):
 
-    print('hello')
-    # TradesInChartView.objects.all().delete()
+    TradesInChartView.objects.all().delete()
 
-    # bc  = getBodyContext(request, 'bc')
-    # cd = getBodyContext(request, 'cd')
+    bc  = utilities.getBodyContext(request, 'bc')
 
-    # numbers = bc.split('-')
+    numbers = bc.split('-')
 
-    # number1 = float(numbers[0].strip())
-    # number2 = float(numbers[1].strip())
+    number1 = float(numbers[0].strip())
+    number2 = float(numbers[1].strip())
 
-    # filtered_trades = all_trades.objects.filter(retracement__bcRetracement__gte=number1, retracement__bcRetracement__lt=number2)
-    # # filtered_trades = all_trades.objects.all()
+    filtered_trades = all_trades.objects.filter(retracement__bcRetracement__gte=number1, retracement__bcRetracement__lt=number2)
 
-    # for each in filtered_trades:
-            
-    #     TradesInChartView.objects.get_or_create(
-
-    #         tradeInfo = each.tradeInfo,
-    #         pivotInfo = each.pivotInfo,
-    #         movement = each.movement,
-    #         settings = each.settings,
-    #         pnl = each.pnl,
-    #         retracement =  each.retracement,
-    #         enterExitInfo = each.enterExitInfo,
-    #         duration = each.duration,
-    #         chartData = each.chartData,
-            
-    #     )
-
+    for each in filtered_trades:
+        TradesInChartView.objects.create(
+            tradeInfo=each.tradeInfo,
+            pivotInfo=each.pivotInfo,
+            movement=each.movement,
+            settings=each.settings,
+            pnl=each.pnl,
+            retracement=each.retracement,
+            enterExitInfo=each.enterExitInfo,
+            duration=each.duration,
+            chartData=each.chartData,
+        )
+    
     return HttpResponse("DELETE HISTORY")
+
+# CREATE A SINGLE-PEFORMANCE OBJECT FOR ALL TRADES OF SELECTED SYMBOL
 @csrf_exempt
-
-
 def get_trades_of_selected_symbol(request):
 
-    
-    symbol  = getBodyContext(request, 'symbol')
+    symbol  = utilities.getBodyContext(request, 'symbol')
 
     if symbol != 'All Symbols':
 
@@ -72,7 +139,6 @@ def get_trades_of_selected_symbol(request):
                 
             )
         
-
     elif symbol == 'All Symbols':
 
         trades_of_selected_symbol = all_trades.objects.all()
@@ -95,130 +161,57 @@ def get_trades_of_selected_symbol(request):
                 
             )
     
-
-  
-
-    
     return HttpResponse("get_trades_of_selected_symbol")
 
+# CREATE A BC-RANGE-PEFORMANCE OBJECT FOR EACH RANGE.
+def create_bc_peformances(seperated_trades):
 
-
-
-
-
-
-def get_peformances_bc(seperated_trades):
-   
-    peformances = {}
-
+    # CLEAR PREVIOUS DATA.
     peformance.objects.all().delete() 
 
-    def get_wins_losses_active_amount(trade):
+    def get_lowest_price_drop_and_average_price_drop(trade, lowest_price_dropped):
 
-        active = 0
-        wins = 0
-        lost = 0
-
+        # GET LOWEST PRICE WENT DURING TRADE.
         if trade['tradeInfo']["tradeResult"] == 'Win':
-            wins += 1
 
-        if trade['tradeInfo']["tradeResult"] == "Loss":
-            lost += 1
-        
-        if trade['tradeInfo']["tradeResult"] == "Live":
-            active += 1
+            percentage_drop, lpd = utilities.get_lowest_price_dropped_pct_on_win(trade, lowest_price_dropped)
 
-        return active, wins, lost
+            all_price_drops.append(float(percentage_drop))
 
-    def get_lowest_price_dropped_pct_on_win(trade, lowest_price_dropped):
-        
-        entry = float(trade['enterExitInfo']['enterPrice'])
+            if percentage_drop > float(lowest_price_dropped):
 
-        stop_loss = float(trade['pnl']['stopLoss'])
-
-        price_dropped = float(trade['tradeInfo']['lowest_price_dropped'])
-
-        percentage_drop = ((entry - price_dropped) / (entry - stop_loss)) * 100
-
-        lowest_price_dropped = '%.2f'%(percentage_drop)
-
-        return percentage_drop, lowest_price_dropped
-        
-    def get_win_pct(wins, lost):
-
-        if (wins + lost) > 0:            
-            return '%.2f'%((wins / (wins + lost)) * 100)
-                
-        else: 
-
-            return 0
-    
-    def get_avg_lowest_price_dropped_on_win(wins, all_price_drops):
-
-        if wins > 0:
-            return '%.2f'%(statistics.mean(all_price_drops))
-
-        else:
-            return 0
+                lowest_price_dropped = lpd
 
     for each_list in seperated_trades:
 
         active = 0
-
         wins = 0
-
         lost = 0
-        
         lowest_price_dropped = 0
-
         all_price_drops = []
-
-        current_percentage_drop = 0 
+        lengths = []
 
         for trade in seperated_trades[str(each_list)]:
 
-            a, w, l = get_wins_losses_active_amount(trade)
-
+            # GATHER WIN, LOST, ACTIVE, DATA.
+            a, w, l = utilities.get_wins_losses_active_amount(trade)
             active += a
-
             wins += w
-
             lost += l
 
-            if trade['tradeInfo']["tradeResult"] == 'Win':
+            # GET LENGTH OF TRADE.
+            lengths.append(trade['length']['abcd_length'])
+            
+            # GET LOWEST PRICE DROP.
+            get_lowest_price_drop_and_average_price_drop(trade, lowest_price_dropped)
 
-                percentage_drop, lpd = get_lowest_price_dropped_pct_on_win(trade, lowest_price_dropped)
-
-                all_price_drops.append(float(percentage_drop))
-
-                if percentage_drop > float(lowest_price_dropped):
-
-                    lowest_price_dropped = lpd
-
-                current_percentage_drop = percentage_drop
-
-             # print(each_list, trade['tradeInfo']['abc_ID'], trade['enterExitInfo']['enterPrice'], trade['pnl']['stopLoss'], trade['tradeInfo']['lowest_price_dropped'], current_percentage_drop, lowest_price_dropped)
-                
-        win_pct = get_win_pct(wins, lost)
-
-        average_price_dropped = get_avg_lowest_price_dropped_on_win(wins, all_price_drops)
-
+        win_pct = utilities.get_win_pct(wins, lost)
+        average_price_dropped = utilities.get_avg_lowest_price_dropped_on_win(wins, all_price_drops)
         total_trades = wins + lost + active
 
-        
-
-        # peformances[str(each_list)] = {
-        #     'trades' : total_trades,
-        #     'wins': wins,
-        #     'lost': lost,
-        #     'active': active,
-        #     'win_pct': str(win_pct)  + '%',
-        #     'lowest_price_dropped': str(lowest_price_dropped)  + '%',
-        #     'average_price_dropped': str(average_price_dropped) + '%',      
-        #     'rsi w/r': 0,
-        #     'volume_change_win_pct' : 0,
-        #     'volume_change_lose_pct' : 0
-        # }
+        average_length = 0
+        if(len(lengths) > 0):
+            average_length = '%.2f'%(statistics.mean(lengths))
 
         peformance.objects.get_or_create(
             retracement = str(each_list),
@@ -232,18 +225,129 @@ def get_peformances_bc(seperated_trades):
             rsi_wr = 0,
             volume_change_win_pct = 0,
             volume_change_lose_pct = 0,
+            average_length_win = 0,
+            average_length = average_length,
+
         )
 
-    # for each in peformances:
-    #     print(each)
+# CREATE A CD-RANGE-PEFORMANCE OBJECT FOR EACH RANGE.
+@csrf_exempt
+def create_cd_peformances(request):
 
+    # Clear any previous cd object data.
+    cd_pef.objects.all().delete()
 
-    # for each in peformances:
+    # Get filtered trades.
+    cd_retracements = utilities.get_all_selected_cd_retracement_data(request, all_trades)
 
-    #     peformance.objects.get_or_create(
-    #         all_peformances = each,
-    #         trades = wins
-    #     )
+    filtered_cd_list = utilities.putTradesIntoCorrectCDList(cd_retracements)
+    
+
+    # LOOP OVER EACH RANGE.
+    for key, value in filtered_cd_list.items():
+        
+        active = 0
+        wins = 0
+        lost = 0
+
+        lowest_price_dropped = 0
+        all_price_drops = []
+        lengths = []
+
+        # LOOP OVER THE CURRENT RANGE-LIST OF TRADES.
+        for trade in value:
+
+            # Get result of current trade.
+            a, w, l = utilities.get_wins_losses_active_amount(trade)
+            active += a
+            wins += w
+            lost += l
+
+            # Get length of current trade.
+            lengths.append(trade['length']['abcd_length'])
+
+            # If the current trade result is a 'Win', get the lowest the price dropped during the trade.
+            if trade['tradeInfo']["tradeResult"] == 'Win':
+
+                percentage_drop, lpd = utilities.get_lowest_price_dropped_pct_on_win(trade, lowest_price_dropped)
+
+                all_price_drops.append(float(percentage_drop))
+
+                if percentage_drop > float(lowest_price_dropped):
+
+                    lowest_price_dropped = lpd
+    
+        win_pct = utilities.get_win_pct(wins, lost)
+
+        average_price_dropped = utilities.get_avg_lowest_price_dropped_on_win(wins, all_price_drops)
+
+        total_trades = wins + lost + active
+
+        average_length = 0
+
+        if(len(lengths) > 0):
+
+            average_length = '%.2f'%(statistics.mean(lengths))
+
+        # CREATE PEFORMANCE-OBJECT FOR CURRENT RANGE PEFORMANCE.
+        cd_pef.objects.create(
+            bc = str(key),
+            cd = key,
+            trades = total_trades,
+            wins = wins,
+            lost = lost,
+            active = active,
+            win_pct = str(100)  + '%',
+            lowest_price_dropped = str(lowest_price_dropped)  + '%',
+            average_price_dropped = str(100) + '%',      
+            rsi_wr = 0,
+            volume_change_win_pct = 0,
+            volume_change_lose_pct = 0,
+            average_length_win = 0,
+            average_length = 100,
+
+        )
+
+    return HttpResponse("CD BACKEND")
+
+@csrf_exempt
+# GATHER ALL TRADES OF SELECTED SYMBOL
+def get_all_trades_of_selected_symbol(request):
+
+    symbol  = utilities.getBodyContext(request, 'symbol')
+
+    filtered_trades = all_trades.objects.filter(tradeInfo__symbol=symbol)
+    
+    trades = seperate_trades_by_bc(filtered_trades)
+
+    create_bc_peformances(trades)
+
+    low = 0
+    high = 100
+
+    # Filter the all_trades objects based on the extracted values
+    filtered_trades = [trade for trade in filtered_trades if low < trade.retracement['bcRetracement'] < high]
+    filtered_cd_list = utilities.putTradesIntoCorrectCDList(filtered_trades)
+ 
+
+    create_c(filtered_cd_list)
+
+    TradesInChartView.objects.all().delete()   
+    # Create trades of symbol
+    for each in filtered_trades:
+        TradesInChartView.objects.create(
+            tradeInfo=each.tradeInfo,
+            pivotInfo=each.pivotInfo,
+            movement=each.movement,
+            settings=each.settings,
+            pnl=each.pnl,
+            retracement=each.retracement,
+            enterExitInfo=each.enterExitInfo,
+            duration=each.duration,
+            chartData=each.chartData,
+        )
+    
+    return HttpResponse('get_all_trades_of_selected_symbol')
 
 def seperate_trades_by_bc(all_trades):
 
@@ -351,7 +455,6 @@ def seperate_trades_by_bc(all_trades):
         '99-100': [],
 
 }
-    
 
     for each in all_trades:
 
@@ -367,6 +470,8 @@ def seperate_trades_by_bc(all_trades):
                 'duration': each.duration,
                 'movement': each.movement,
                 'chartData': each.chartData,
+                'length': each.length,
+            
             }
     
         x['0-100'].append(temp)
@@ -592,25 +697,104 @@ def seperate_trades_by_bc(all_trades):
         #     x['91-101'].append(temp)
         # else:
         #     print('here',bc)
-            
-    
+
     return x
 
-def getBodyContext(request, str):
 
-    body_unicode = request.body.decode('utf-8')
-    
-    import ast
-    d = ast.literal_eval(body_unicode)
+class get_by_symbols(generics.ListCreateAPIView):
+    queryset            = by_symbols.objects.all()
+    serializer_class    = BySymbolsSerialilzer
 
-    return (d[str])
+class get_cd_peformances(generics.ListAPIView):
 
+    queryset            = cd_Peformance.objects.all()
+    serializer_class    = CDPeformance
 
-
-class ViewTradesInChartViewSerializer(generics.ListCreateAPIView):
+class get_trades_for_single_trade_table(generics.ListCreateAPIView):
     queryset            = TradesInChartView.objects.all()
     serializer_class    = TradesInChartViewSerializer
 
 class peformance_serial(generics.ListCreateAPIView):
     queryset            = peformance.objects.all()
     serializer_class    = PeformanceSerializer
+
+class get_cd_ojbects(generics.ListCreateAPIView):
+    queryset            = cd_pef.objects.all()
+    serializer_class    = CDPeformanceSerializer
+
+
+
+# CREATE A CD-RANGE-PEFORMANCE OBJECT FOR EACH RANGE.
+@csrf_exempt
+def create_c(cdlist):
+
+    # Clear any previous cd object data.
+    cd_pef.objects.all().delete()
+
+    # LOOP OVER EACH RANGE.
+    for key, value in cdlist.items():
+        
+        if len(value)>0:
+
+            active = 0
+            wins = 0
+            lost = 0
+
+            lowest_price_dropped = 0
+            all_price_drops = []
+            lengths = []
+
+            # LOOP OVER THE CURRENT RANGE-LIST OF TRADES.
+            for trade in value:
+
+                # Get result of current trade.
+                a, w, l = utilities.get_wins_losses_active_amount(trade)
+                active += a
+                wins += w
+                lost += l
+
+                # Get length of current trade.
+                lengths.append(trade['length']['abcd_length'])
+
+                # If the current trade result is a 'Win', get the lowest the price dropped during the trade.
+                if trade['tradeInfo']["tradeResult"] == 'Win':
+
+                    percentage_drop, lpd = utilities.get_lowest_price_dropped_pct_on_win(trade, lowest_price_dropped)
+
+                    all_price_drops.append(float(percentage_drop))
+
+                    if percentage_drop > float(lowest_price_dropped):
+
+                        lowest_price_dropped = lpd
+        
+            win_pct = utilities.get_win_pct(wins, lost)
+
+            average_price_dropped = utilities.get_avg_lowest_price_dropped_on_win(wins, all_price_drops)
+
+            total_trades = wins + lost + active
+
+            average_length = 0
+
+            if(len(lengths) > 0):
+
+                average_length = '%.2f'%(statistics.mean(lengths))
+
+            # CREATE PEFORMANCE-OBJECT FOR CURRENT RANGE PEFORMANCE.
+            cd_pef.objects.create(
+                bc = str(key),
+                cd = key,
+                trades = total_trades,
+                wins = wins,
+                lost = lost,
+                active = active,
+                win_pct = str(100)  + '%',
+                lowest_price_dropped = str(lowest_price_dropped)  + '%',
+                average_price_dropped = str(100) + '%',      
+                rsi_wr = 0,
+                volume_change_win_pct = 0,
+                volume_change_lose_pct = 0,
+                average_length_win = 0,
+                average_length = 100,
+
+            )
+
